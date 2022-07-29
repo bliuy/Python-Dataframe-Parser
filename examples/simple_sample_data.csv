@@ -1,0 +1,5 @@
+EquipmentLabel, ID, Manufacturer, ConstructedDate, SiteName, OperationalHours
+Pump-01, A1, Foo Corp, 2020-01-01, Site A, 35
+Heater-10, B2, Bar Corp, 2021-01-01, Site B, 50
+Column-05, C3, Baz Corp, 2022-01-01, Site C, 85
+Valve-100, D3,Qux Corp, 2019-01-01, Site D, 10

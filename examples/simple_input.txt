@@ -1,0 +1,4 @@
+inputFile
+| READ csv
+| WHERE OperationalHours > 10
+| EXTEND EquipmentType = EquipmentLabel
