@@ -1,0 +1,16 @@
+<program> ::= <table> <nl> (<statement>)*
+<statement> ::= "| READ " <identity> <nl>
+| "| WHERE " <comparison> <nl>
+| "| EXTEND " <column> " = " <expression> <nl>
+<comparison> ::= <expression> ((" > " | " < " | " >= " | " <= ") <expression>)+
+<expression> ::= <term> ((" + " | " - ") <term>)*
+<term> ::= <unary> ((" * " | " / ") <unary>)*
+<unary> ::= (" + " | " - ")? <primary>
+<primary> ::= <column> | <number> | <float>
+<column> ::= "[" <string> "]" | <identity>
+<table> ::= "[" <string> "]" | <identity>
+<number> ::= [0-9]+
+<float> ::= [0-9]+ "." [0-9]+
+<string> ::= "\"" (<identity> | " ")+ "\""
+<identity> ::= ([A-Z] | [a-z] | [0-9])+
+<nl> ::= "\n"
