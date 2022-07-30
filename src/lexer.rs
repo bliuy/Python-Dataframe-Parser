@@ -3,7 +3,7 @@ pub mod lexer {
     use logos;
 
     // Defining the token types
-    #[derive(Debug, logos::Logos, PartialEq)]
+    #[derive(Debug, logos::Logos, PartialEq, Clone)]
     pub enum Token {
         #[token("+")]
         PlusOperator,
@@ -31,6 +31,7 @@ pub mod lexer {
         Float,
         #[regex(r#"\n"#)]
         NewLine,
+        EOF,
         #[error]
         #[regex(r#"[\n\t\s]"#, logos::skip)]
         Error,
