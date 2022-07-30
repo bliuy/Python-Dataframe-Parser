@@ -1,7 +1,7 @@
 pub mod errors {
     use std::{error::Error, fmt::Display};
 
-    use logos::source;
+    
 
     use crate::lexer::lexer::Token;
 
@@ -28,8 +28,8 @@ pub mod errors {
     impl ParseErr {
         pub fn new(expected: Token, actual: Token) -> Self {
             ParseErr {
-                expected: expected,
-                actual: actual,
+                expected,
+                actual,
                 source: BaseErr {},
             }
         }

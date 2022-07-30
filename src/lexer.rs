@@ -47,7 +47,7 @@ mod tests {
     fn lexer_test() {
         let mut lex = <lexer::Token as logos::Logos>::lexer(r#"["Foo"]"#);
 
-        while let Some(token) = lex.next() {
+        for token in lex {
             dbg!(token);
         }
     }
