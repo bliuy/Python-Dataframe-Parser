@@ -20,8 +20,6 @@ pub mod ParseErr {
 
     use crate::lexer::lexer::Token;
 
-    
-
     #[derive(Debug)]
     pub(crate) enum ParseErr {
         WrongToken {
@@ -63,7 +61,10 @@ pub mod ParseErr {
 
                     write!(f, "{}", err_msg)
                 }
-                ParseErr::CustomParseError { error_msg, source: _ } => {
+                ParseErr::CustomParseError {
+                    error_msg,
+                    source: _,
+                } => {
                     write!(
                         f,
                         "Error raised when parsing. See error message: {}",
@@ -85,7 +86,10 @@ pub mod ParseErr {
                     let error = &**source; // Reference to the trait obejct within the Box
                     Some(error)
                 }
-                ParseErr::CustomParseError { error_msg: _, source } => {
+                ParseErr::CustomParseError {
+                    error_msg: _,
+                    source,
+                } => {
                     let error = &**source; // Reference to the trait obejct within the Box
                     Some(error)
                 }
