@@ -1,10 +1,5 @@
-pub mod errors {
+pub mod BaseErr {
     use std::{error::Error, fmt::Display};
-
-    
-
-    use crate::lexer::lexer::Token;
-
     #[derive(Debug, Clone)]
     pub(crate) struct BaseErr;
 
@@ -17,37 +12,84 @@ pub mod errors {
     }
 
     impl Error for BaseErr {}
+}
 
-    #[derive(Debug, Clone)]
-    pub(crate) struct ParseErr {
-        expected: Token,
-        actual: Token,
-        source: BaseErr,
-    }
+pub mod ParseErr {
+    use std::error::Error;
+    use std::fmt::Display;
 
-    impl ParseErr {
-        pub fn new(expected: Token, actual: Token) -> Self {
-            ParseErr {
-                expected,
-                actual,
-                source: BaseErr {},
-            }
-        }
+    use crate::lexer::lexer::Token;
+
+    use super::BaseErr::BaseErr;
+
+    #[derive(Debug)]
+    pub(crate) enum ParseErr {
+        WrongToken {
+            expected: Vec<Token>,
+            actual: Token,
+            source: Box<dyn Error>,
+        },
+        CustomParseError {
+            error_msg: String,
+            source: Box<dyn Error>,
+        },
     }
 
     impl Display for ParseErr {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(
-                f,
-                "Expected {:#?} token, got {:#?} token.",
-                self.expected, self.actual
-            )
+            match self {
+                ParseErr::WrongToken {
+                    expected,
+                    actual,
+                    source,
+                } => {
+                    let mut err_msg = String::from("Expected ");
+                    let mut i = 0;
+                    loop {
+                        let tok = &expected[i];
+                        if i == expected.len() - 1 {
+                            let msg = format!(
+                                "{:#?} token, got {:#?} token instead.",
+                                expected[i], actual
+                            );
+                            err_msg.push_str(&msg);
+                            break;
+                        } else {
+                            let msg = format!("{:#?} token or ", expected[i]);
+                            err_msg.push_str(&msg);
+                            i = i + 1;
+                        }
+                    }
+
+                    write!(f, "{}", err_msg)
+                }
+                ParseErr::CustomParseError { error_msg, source } => {
+                    write!(
+                        f,
+                        "Error raised when parsing. See error message: {}",
+                        error_msg
+                    )
+                }
+            }
         }
     }
 
     impl Error for ParseErr {
         fn source(&self) -> Option<&(dyn Error + 'static)> {
-            Some(&self.source)
+            match self {
+                ParseErr::WrongToken {
+                    expected,
+                    actual,
+                    source,
+                } => {
+                    let error = &**source; // Reference to the trait obejct within the Box
+                    Some(error)
+                }
+                ParseErr::CustomParseError { error_msg, source } => {
+                    let error = &**source; // Reference to the trait obejct within the Box
+                    Some(error)
+                }
+            }
         }
 
         fn cause(&self) -> Option<&dyn Error> {
