@@ -1,6 +1,21 @@
 pub mod lexer {
 
-    use logos;
+    use logos::{self, Lexer};
+
+    fn capture_string(lex: &mut Lexer<Token>) -> Option<String> {
+        let captured_string = lex.slice();
+        Some(captured_string.to_string())
+    }
+    fn capture_float(lex: &mut Lexer<Token>) -> Option<f32> {
+        let captured_string = lex.slice();
+        let captured_float = captured_string.parse();
+        captured_float.ok()
+    }
+    fn capture_int(lex: &mut Lexer<Token>) -> Option<i32> {
+        let captured_string = lex.slice();
+        let captured_int = captured_string.parse();
+        captured_int.ok()
+    }
 
     // Defining the token types
     #[derive(Debug, logos::Logos, PartialEq, Clone)]
@@ -23,12 +38,12 @@ pub mod lexer {
         WHERE,
         #[token("| EXTEND")]
         EXTEND,
-        #[regex(r#""([A-Za-z0-9])+""#)]
-        Indentity,
-        #[regex(r#"[0-9]+"#)]
-        Integer,
-        #[regex(r#"[0-9]+.[0-9]+"#)]
-        Float,
+        #[regex(r#"([A-z]+[0-9]*)"#, capture_string)]
+        Identity(String),
+        #[regex(r#"[0-9]+"#, capture_int)]
+        Integer(i32),
+        #[regex(r#"[0-9]+.[0-9]+"#, capture_float)]
+        Float(f32),
         #[regex(r#"\n"#)]
         NewLine,
         EOF,
