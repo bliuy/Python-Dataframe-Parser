@@ -20,7 +20,7 @@ pub mod ParseErr {
 
     use crate::lexer::lexer::Token;
 
-    use super::BaseErr::BaseErr;
+    
 
     #[derive(Debug)]
     pub(crate) enum ParseErr {
@@ -41,12 +41,12 @@ pub mod ParseErr {
                 ParseErr::WrongToken {
                     expected,
                     actual,
-                    source,
+                    source: _,
                 } => {
                     let mut err_msg = String::from("Expected ");
                     let mut i = 0;
                     loop {
-                        let tok = &expected[i];
+                        let _tok = &expected[i];
                         if i == expected.len() - 1 {
                             let msg = format!(
                                 "{:#?} token, got {:#?} token instead.",
@@ -57,13 +57,13 @@ pub mod ParseErr {
                         } else {
                             let msg = format!("{:#?} token or ", expected[i]);
                             err_msg.push_str(&msg);
-                            i = i + 1;
+                            i += 1;
                         }
                     }
 
                     write!(f, "{}", err_msg)
                 }
-                ParseErr::CustomParseError { error_msg, source } => {
+                ParseErr::CustomParseError { error_msg, source: _ } => {
                     write!(
                         f,
                         "Error raised when parsing. See error message: {}",
@@ -78,14 +78,14 @@ pub mod ParseErr {
         fn source(&self) -> Option<&(dyn Error + 'static)> {
             match self {
                 ParseErr::WrongToken {
-                    expected,
-                    actual,
+                    expected: _,
+                    actual: _,
                     source,
                 } => {
                     let error = &**source; // Reference to the trait obejct within the Box
                     Some(error)
                 }
-                ParseErr::CustomParseError { error_msg, source } => {
+                ParseErr::CustomParseError { error_msg: _, source } => {
                     let error = &**source; // Reference to the trait obejct within the Box
                     Some(error)
                 }
