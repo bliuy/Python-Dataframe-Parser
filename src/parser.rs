@@ -24,7 +24,8 @@ pub mod parser {
         next_token: Option<Token>,
         lexer: logos::Lexer<'a, Token>,
         entities: HashSet<EntityType>,
-        python_output: String,
+        main_table_name: String,
+        pub(crate) python_output: String,
     }
 
     impl<'a> RustyParser<'a> {
@@ -74,12 +75,13 @@ pub mod parser {
             self.next_token = following_token;
         }
 
-        fn new(lex: Lexer<'a, Token>) -> Self {
+        pub fn new(lex: Lexer<'a, Token>) -> Self {
             let mut parser = RustyParser {
                 current_token: None,
                 next_token: None,
                 lexer: lex,
                 entities: HashSet::new(),
+                main_table_name: "".to_string(),
                 python_output: "".to_string(),
             };
             parser.move_token(); // Moving the first token value into the "next_token" field of the struct.
@@ -87,23 +89,54 @@ pub mod parser {
             parser
         }
 
-        fn program(&mut self) -> Result<(), ParseErr> {
-            // Initial token - Should represent a table name
+        pub fn program(&mut self) -> Result<(), ParseErr> {
+            // Initial token - Should be an identity that represents a token name
             let token = self.current_token.take();
             match token {
                 Some(tok) => match tok {
-                    Token::OpenSquareBracket => todo!(),
                     Token::Identity(identity) => {
-                        self.entities.insert(EntityType::Table(identity));
-                        Ok(())
+                        self.entities.insert(EntityType::Table(identity.clone())); // Adding into the HashSet of tables
+                        self.main_table_name.push_str(&identity); // Indicating that this will be the main table.
+                        let gen_code = format!("{} = df \n", identity);
+                        self.python_output.push_str(&gen_code);
+                        self.move_token();
                     }
                     other => {
                         return Err(ParseErr::WrongToken {
-                            expected: vec![
-                                Token::OpenSquareBracket,
-                                Token::Identity("".to_string()),
-                            ],
+                            expected: vec![Token::Identity("<variable name>".to_string())],
                             actual: other,
+                            source: Box::new(BaseErr {}),
+                        })
+                    }
+                },
+                None => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected a identity for the first input.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+
+            while let Some(_) = &self.current_token {
+                self.statement()?;
+            }
+
+            Ok(())
+        }
+
+        fn statement(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(tok) => match tok {
+                    Token::READ => {
+                        self.move_token();
+                        self.read_statement();
+                        Ok(())
+                    }
+                    Token::WHERE => todo!(),
+                    Token::EXTEND => todo!(),
+                    other => {
+                        return Err(ParseErr::CustomParseError {
+                            error_msg: "Expected a statement!".to_string(),
                             source: Box::new(BaseErr {}),
                         })
                     }
@@ -111,5 +144,177 @@ pub mod parser {
                 None => todo!(),
             }
         }
+
+        fn read_statement(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(tok) => match tok {
+                    Token::Identity(identity) => match identity.to_lowercase().as_str() {
+                        "csv" => {
+                            let code_gen = format!(
+                                "{} = pd.DataFrame.read_csv({}) \n",
+                                self.main_table_name, self.main_table_name
+                            );
+                            self.python_output.push_str(&code_gen);
+                            self.move_token();
+                            return Ok(());
+                        }
+                        "excel" => {
+                            let code_gen = format!(
+                                "{} = pd.DataFrame.read_excel({}) \n",
+                                self.main_table_name, self.main_table_name
+                            );
+                            self.python_output.push_str(&code_gen);
+                            self.move_token();
+                            return Ok(());
+                        }
+                        _ => {
+                            return Err(ParseErr::CustomParseError {
+                                error_msg: "Expected either 'csv' or 'excel'.".to_string(),
+                                source: Box::new(BaseErr {}),
+                            })
+                        }
+                    },
+                    other => todo!(),
+                },
+                None => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected either 'csv' or 'excel'.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+        }
+
+        fn where_statement(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(tok) => {
+                    self.move_token();
+                    if let Ok(_) = self.isnotnull() {
+                        return Ok(());
+                    }
+                    if let Ok(_) = self.isnull() {
+                        return Ok(());
+                    }
+                    if let Ok(_) = self.expression() {
+                        return Ok(());
+                    }
+
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected at least 1 comparison operator'.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    });
+                }
+                None => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected at least 1 comparison operator'.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+            todo!()
+        }
+
+        fn isnotnull(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(Token::ISNOTNULL) => {
+                    self.move_token();
+                    match self.current_token.take() {
+                        Some(Token::OpenSquareBracket) => {
+                            self.move_token();
+                            self.column()?
+                        }
+                        _ => {
+                            return Err(ParseErr::CustomParseError {
+                                error_msg: "Expected '(' after the 'isnotnull' function."
+                                    .to_string(),
+                                source: Box::new(BaseErr {}),
+                            })
+                        }
+                    }
+                    Ok(())
+                }
+                _ => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected isnotnull function.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+        }
+
+        fn isnull(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(Token::ISNULL) => {
+                    self.move_token();
+                    match self.current_token.take() {
+                        Some(Token::OpenSquareBracket) => {
+                            self.move_token();
+                            self.column()?
+                        }
+                        _ => {
+                            return Err(ParseErr::CustomParseError {
+                                error_msg: "Expected '(' after the 'isnull' function.".to_string(),
+                                source: Box::new(BaseErr {}),
+                            })
+                        }
+                    }
+                    Ok(())
+                }
+                _ => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: "Expected isnull function.".to_string(),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+        }
+
+        fn expression(&mut self) -> Result<(), ParseErr> {
+            todo!()
+        }
+        fn column(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(Token::OpenSquareBracket) => {
+                    self.move_token();
+                    self.str();
+                    Ok(())
+                }
+                Some(Token::Identity(identity)) => Ok(()),
+                _ => todo!(),
+            }
+        }
+
+        fn str(&mut self) -> Result<(), ParseErr> {
+            match self.current_token.take() {
+                Some(Token::QuotationMark) => {}
+                _ => todo!(),
+            }
+
+            todo!()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::{parser::RustyParser, *};
+
+    /// Extremely basic test to see if the parsing even works.
+    /// If this fails, this means that there are serious underlying problems that needs to be fixed even before addressing any other failed tests.
+    #[test]
+    fn basic_parsing_test() {
+        let input = "
+        sourceTable
+        | READ csv
+        ";
+
+        let expected_output =
+            "sourceTable = df \nsourceTable = pd.DataFrame.read_csv(sourceTable) \n";
+
+        let lex = <crate::lexer::lexer::Token as logos::Logos>::lexer(input);
+        let mut pars = RustyParser::new(lex);
+        pars.program().unwrap();
+        assert_eq!(expected_output, &pars.python_output);
     }
 }
