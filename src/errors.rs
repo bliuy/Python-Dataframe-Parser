@@ -31,6 +31,9 @@ pub mod ParseErr {
             error_msg: String,
             source: Box<dyn Error>,
         },
+        NoTokenLeftError {
+            source: Box<dyn Error>,
+        },
     }
 
     impl Display for ParseErr {
@@ -71,6 +74,9 @@ pub mod ParseErr {
                         error_msg
                     )
                 }
+                ParseErr::NoTokenLeftError { .. } => {
+                    write!(f, "No tokens left to be processed!")
+                }
             }
         }
     }
@@ -90,6 +96,10 @@ pub mod ParseErr {
                     error_msg: _,
                     source,
                 } => {
+                    let error = &**source; // Reference to the trait obejct within the Box
+                    Some(error)
+                }
+                ParseErr::NoTokenLeftError { source } => {
                     let error = &**source; // Reference to the trait obejct within the Box
                     Some(error)
                 }
