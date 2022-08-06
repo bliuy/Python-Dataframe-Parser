@@ -2,6 +2,7 @@
 pub mod parser {
     use std::collections::HashSet;
     use std::error::Error;
+    use std::fmt::format;
 
     use logos::Lexer;
 
@@ -260,12 +261,10 @@ pub mod parser {
                     }
                     Ok(())
                 }
-                _ => {
-                    return Err(ParseErr::CustomParseError {
-                        error_msg: "Expected isnull function.".to_string(),
-                        source: Box::new(BaseErr {}),
-                    })
-                }
+                _ => Err(ParseErr::CustomParseError {
+                    error_msg: "Expected isnull function.".to_string(),
+                    source: Box::new(BaseErr {}),
+                }),
             }
         }
 
@@ -285,12 +284,56 @@ pub mod parser {
         }
 
         fn str(&mut self) -> Result<(), ParseErr> {
+            // Matching the quotation mark at the start of the string
             match self.current_token.take() {
-                Some(Token::QuotationMark) => {}
-                _ => todo!(),
+                Some(Token::QuotationMark) => {
+                    self.move_token(); // Start of string
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::QuotationMark],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                _ => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: String::from("No tokens left!"),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
             }
 
-            todo!()
+            let mut current_str = String::from("");
+            while let Some(Token::Identity(identity)) = self.current_token.take() {
+                current_str.push_str(&identity); // Appending the token string
+                current_str.push_str(" "); // Appending a whitespace character
+            }
+
+            if current_str.len() > 0 {
+                current_str.pop(); // Removing the trailing whitespace added during the while-let loop above.
+            }
+
+            // Matching the quotation mark at the end of the string
+            match self.current_token.take() {
+                Some(Token::QuotationMark) => {
+                    self.move_token(); // Start of string
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::QuotationMark],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                _ => {
+                    return Err(ParseErr::CustomParseError {
+                        error_msg: String::from("No tokens left!"),
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+            Ok(())
         }
     }
 }
