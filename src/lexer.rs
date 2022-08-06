@@ -28,24 +28,36 @@ pub mod lexer {
         MulOperator,
         #[token("/")]
         DivOperator,
+        #[token("=")]
+        EqualsOperator,
         #[token("[")]
         OpenSquareBracket,
         #[token("]")]
         CloseSquareBracket,
+        #[token("(")]
+        OpenBracket,
+        #[token(")")]
+        CloseBracket,
+        #[token(r#"""#)]
+        QuotationMark,
         #[token("| READ")]
         READ,
         #[token("| WHERE")]
         WHERE,
         #[token("| EXTEND")]
         EXTEND,
+        #[token("isnotnull")]
+        ISNOTNULL,
+        #[token("isnull")]
+        ISNULL,
         #[regex(r#"([A-z]+[0-9]*)"#, capture_string)]
         Identity(String),
         #[regex(r#"[0-9]+"#, capture_int)]
         Integer(i32),
         #[regex(r#"[0-9]+.[0-9]+"#, capture_float)]
         Float(f32),
-        #[regex(r#"\n"#)]
-        NewLine,
+        // #[regex(r#"\n"#)]
+        // NewLine,sd
         EOF,
         #[error]
         #[regex(r#"[\n\t\s]"#, logos::skip)]
@@ -60,7 +72,12 @@ mod tests {
 
     #[test]
     fn lexer_test() {
-        let lex = <lexer::Token as logos::Logos>::lexer(r#"["Foo"]"#);
+        let input = "
+        sourceTable
+        | READ csv
+        | EXTEND foo = bar * 2
+        ";
+        let lex = <lexer::Token as logos::Logos>::lexer(input);
 
         for token in lex {
             dbg!(token);
