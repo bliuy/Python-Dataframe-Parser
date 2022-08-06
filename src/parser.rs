@@ -191,6 +191,11 @@ pub mod parser {
                 Some(tok) => {
                     self.move_token();
                     if let Ok(_) = self.isnotnull() {
+                        let code_gen = format!(
+                            "{} = {}[cond]\n",
+                            self.main_table_name, self.main_table_name
+                        );
+                        self.python_output.push_str(&code_gen);
                         return Ok(());
                     }
                     if let Ok(_) = self.isnull() {
@@ -206,8 +211,7 @@ pub mod parser {
                     });
                 }
                 None => {
-                    return Err(ParseErr::CustomParseError {
-                        error_msg: "Expected at least 1 comparison operator'.".to_string(),
+                    return Err(ParseErr::NoTokenLeftError {
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -218,29 +222,29 @@ pub mod parser {
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
             match self.current_token.take() {
                 Some(Token::ISNOTNULL) => {
+                    let code_gen = "cond = df.loc[:,";
+                    self.python_output.push_str(code_gen);
+
                     self.move_token();
-                    match self.current_token.take() {
-                        Some(Token::OpenSquareBracket) => {
-                            self.move_token();
-                            self.column()?
-                        }
-                        _ => {
-                            return Err(ParseErr::CustomParseError {
-                                error_msg: "Expected '(' after the 'isnotnull' function."
-                                    .to_string(),
-                                source: Box::new(BaseErr {}),
-                            })
-                        }
-                    }
-                    Ok(())
+                    self.column()?;
+
+                    let code_gen = "]";
+                    self.python_output.push_str(code_gen);
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::ISNOTNULL],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
                 }
                 _ => {
-                    return Err(ParseErr::CustomParseError {
-                        error_msg: "Expected isnotnull function.".to_string(),
+                    return Err(ParseErr::NoTokenLeftError {
                         source: Box::new(BaseErr {}),
                     })
                 }
             }
+            Ok(())
         }
 
         fn isnull(&mut self) -> Result<(), ParseErr> {
@@ -275,7 +279,8 @@ pub mod parser {
             match self.current_token.take() {
                 Some(Token::OpenSquareBracket) => {
                     self.move_token();
-                    self.str();
+                    self.str()?;
+
                     Ok(())
                 }
                 Some(Token::Identity(identity)) => Ok(()),
@@ -287,6 +292,7 @@ pub mod parser {
             // Matching the quotation mark at the start of the string
             match self.current_token.take() {
                 Some(Token::QuotationMark) => {
+                    self.python_output.push_str(r#"""#);
                     self.move_token(); // Start of string
                 }
                 Some(tok) => {
@@ -314,9 +320,12 @@ pub mod parser {
                 current_str.pop(); // Removing the trailing whitespace added during the while-let loop above.
             }
 
+            self.python_output.push_str(&current_str);
+
             // Matching the quotation mark at the end of the string
             match self.current_token.take() {
                 Some(Token::QuotationMark) => {
+                    self.python_output.push_str(r#"""#);
                     self.move_token(); // Start of string
                 }
                 Some(tok) => {
