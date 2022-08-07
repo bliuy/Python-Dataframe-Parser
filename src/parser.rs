@@ -197,7 +197,6 @@ pub mod parser {
                     self.main_table_name, self.main_table_name
                 );
                 self.python_output.push_str(&code_gen);
-                println!("{}", &self.python_output);
                 return Ok(());
             }
 
@@ -247,15 +246,10 @@ pub mod parser {
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
             self.match_token(&Token::ISNOTNULL)?;
-
             self.python_output.push_str("cond = df.loc[:,");
-
             self.match_token(&Token::OpenBracket)?;
-
             self.column()?;
-
             self.match_token(&Token::CloseBracket)?;
-
             self.python_output.push_str("].notna()\n");
 
             Ok(())
@@ -290,10 +284,12 @@ pub mod parser {
             todo!()
         }
         fn column(&mut self) -> Result<(), ParseErr> {
+
             if let Ok(_) = self.match_token(&Token::OpenSquareBracket) {
                 self.str()?;
+                self.match_token(&Token::CloseSquareBracket)?;
                 return Ok(());
-            }
+            } 
 
             match self.current_token.take() {
                 Some(Token::Identity(identity)) => {
@@ -324,6 +320,7 @@ pub mod parser {
             self.python_output.push_str(r#"""#);
 
             let mut current_str = String::from("");
+
             loop {
                 match self.current_token.take() {
                     Some(Token::Identity(identity)) => {
@@ -346,21 +343,6 @@ pub mod parser {
                     None => todo!(),
                 }
             }
-            // while let Some(Token::Identity(identity)) = self.current_token.take() {
-            //     current_str.push_str(&identity); // Appending the token string
-            //     current_str.push_str(" "); // Appending a whitespace character
-            //     self.move_token();
-            // }
-            // if current_str.len() > 0 {
-            //     current_str.pop(); // Removing the trailing whitespace added during the while-let loop above.
-            // }
-
-            // self.python_output.push_str(&current_str);
-            // println!("{}", &current_str);
-
-            // println!("{:#?}", &self.current_token);
-            // self.match_token(&Token::QuotationMark)?;
-
             Ok(())
         }
     }
