@@ -306,9 +306,7 @@ pub mod parser {
                         self.move_token();
                         self.term()?;
                     }
-                    _ => {
-                        break
-                    }
+                    _ => break,
                 }
             }
             self.python_output.push_str(")");
@@ -339,6 +337,19 @@ pub mod parser {
         }
 
         fn unary(&mut self) -> Result<(), ParseErr> {
+            if let Ok(_) = self.match_token(&Token::PlusOperator) {
+                self.primary()?;
+            }
+
+            if let Ok(_) = self.match_token(&Token::MinusOperator) {
+                self.python_output.push_str("-1 * ");
+                self.primary()?;
+            }
+
+            self.primary()
+        }
+
+        fn primary(&mut self) -> Result<(), ParseErr> {
             todo!()
         }
 
