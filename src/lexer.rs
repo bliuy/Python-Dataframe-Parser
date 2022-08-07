@@ -38,6 +38,14 @@ pub mod lexer {
         OpenBracket,
         #[token(")")]
         CloseBracket,
+        #[token(">")]
+        GreaterThan,
+        #[token("<")]
+        LessThan,
+        #[token(">=")]
+        GreaterThanEqualsTo,
+        #[token("<=")]
+        LessThanEqualsTo,
         #[token(r#"""#)]
         QuotationMark,
         #[token("| READ")]
