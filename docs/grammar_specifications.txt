@@ -1,8 +1,8 @@
 <program> ::= <table> <nl> (<statement>)*
 <statement> ::= "| READ " <identity> <nl>
-| "| WHERE " (<comparison> | <boolfunction>) <nl>
+| "| WHERE " (<comparison> | <boolfunction>) (("AND" | "OR") (<comparison> | <boolfunction>))* <nl>
 | "| EXTEND " <column> " = " <expression> <nl>
-<comparison> ::= <expression> ((" > " | " < " | " >= " | " <= ") <expression>)+
+<comparison> ::= <expression> (" > " | " < " | " >= " | " <= ") <expression>
 <boolfunction> ::= (<isnotnull> | <isnull>)
 <isnotnull> ::= "isnotnull" "(" (<column>) ")"
 <isnull> ::= "isnotnull" "(" (<column>) ")"
