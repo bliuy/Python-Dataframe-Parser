@@ -292,6 +292,36 @@ pub mod parser {
         }
 
         fn expression(&mut self) -> Result<(), ParseErr> {
+            self.python_output.push_str("(");
+            self.term()?;
+            match self.current_token.take() {
+                Some(Token::PlusOperator) => {
+                    self.python_output.push_str("+");
+                    self.move_token();
+                }
+                Some(Token::MinusOperator) => {
+                    self.python_output.push_str("-");
+                    self.move_token();
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::PlusOperator, Token::MinusOperator],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                None => {
+                    return Err(ParseErr::NoTokenLeftError {
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+            self.term()?;
+            self.python_output.push_str(")");
+            Ok(())
+        }
+
+        fn term(&mut self) -> Result<(), ParseErr> {
             todo!()
         }
 
