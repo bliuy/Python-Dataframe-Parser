@@ -216,11 +216,11 @@ pub mod parser {
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
             self.match_token(&Token::ISNOTNULL)?;
-            self.python_output.push_str("cond = df.loc[:,");
+            self.python_output.push_str("cond = ");
             self.match_token(&Token::OpenBracket)?;
             self.column()?;
             self.match_token(&Token::CloseBracket)?;
-            self.python_output.push_str("].notna()\n");
+            self.python_output.push_str(".notna()\n");
 
             Ok(())
         }
@@ -294,41 +294,60 @@ pub mod parser {
         fn expression(&mut self) -> Result<(), ParseErr> {
             self.python_output.push_str("(");
             self.term()?;
-            match self.current_token.take() {
-                Some(Token::PlusOperator) => {
-                    self.python_output.push_str("+");
-                    self.move_token();
-                }
-                Some(Token::MinusOperator) => {
-                    self.python_output.push_str("-");
-                    self.move_token();
-                }
-                Some(tok) => {
-                    return Err(ParseErr::WrongToken {
-                        expected: vec![Token::PlusOperator, Token::MinusOperator],
-                        actual: tok,
-                        source: Box::new(BaseErr {}),
-                    })
-                }
-                None => {
-                    return Err(ParseErr::NoTokenLeftError {
-                        source: Box::new(BaseErr {}),
-                    })
+            loop {
+                match self.current_token.take() {
+                    Some(Token::PlusOperator) => {
+                        self.python_output.push_str("+");
+                        self.move_token();
+                        self.term()?;
+                    }
+                    Some(Token::MinusOperator) => {
+                        self.python_output.push_str("-");
+                        self.move_token();
+                        self.term()?;
+                    }
+                    _ => {
+                        break
+                    }
                 }
             }
-            self.term()?;
             self.python_output.push_str(")");
             Ok(())
         }
 
         fn term(&mut self) -> Result<(), ParseErr> {
+            self.python_output.push_str("(");
+            self.unary()?;
+            loop {
+                match self.current_token.take() {
+                    Some(Token::MulOperator) => {
+                        self.python_output.push_str("*");
+                        self.move_token();
+                        self.unary()?;
+                    }
+                    Some(Token::DivOperator) => {
+                        self.python_output.push_str("/");
+                        self.move_token();
+                        self.unary()?;
+                    }
+                    _ => break,
+                }
+            }
+
+            self.python_output.push_str(")");
+            Ok(())
+        }
+
+        fn unary(&mut self) -> Result<(), ParseErr> {
             todo!()
         }
 
         fn column(&mut self) -> Result<(), ParseErr> {
             if let Ok(_) = self.match_token(&Token::OpenSquareBracket) {
+                self.python_output.push_str("df.loc[:,");
                 self.str()?;
                 self.match_token(&Token::CloseSquareBracket)?;
+                self.python_output.push_str("]");
                 return Ok(());
             }
 
