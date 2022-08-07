@@ -204,7 +204,7 @@ pub mod parser {
                 todo!()
             }
 
-            if let Ok(_) = self.expression() {
+            if let Ok(_) = self.comparison() {
                 todo!()
             }
 
@@ -212,36 +212,6 @@ pub mod parser {
                 error_msg: "Unable to parse the where statement".to_string(),
                 source: Box::new(BaseErr {}),
             })
-            // match self.current_token.take() {
-            //     Some(tok) => {
-            //         if let Ok(_) = self.isnotnull() {
-            //             self.move_token();
-            //             let code_gen = format!(
-            //                 "{} = {}[cond]\n",
-            //                 self.main_table_name, self.main_table_name
-            //             );
-            //             self.python_output.push_str(&code_gen);
-            //             return Ok(());
-            //         }
-            //         if let Ok(_) = self.isnull() {
-            //             self.move_token();
-            //             return Ok(());
-            //         }
-            //         if let Ok(_) = self.expression() {
-            //             return Ok(());
-            //         }
-
-            //         return Err(ParseErr::CustomParseError {
-            //             error_msg: "Expected at least 1 comparison operator'.".to_string(),
-            //             source: Box::new(BaseErr {}),
-            //         });
-            //     }
-            //     None => {
-            //         return Err(ParseErr::NoTokenLeftError {
-            //             source: Box::new(BaseErr {}),
-            //         })
-            //     }
-            // }
         }
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
@@ -280,16 +250,57 @@ pub mod parser {
             }
         }
 
+        fn comparison(&mut self) -> Result<(), ParseErr> {
+            self.expression()?;
+            match self.current_token.take() {
+                Some(Token::GreaterThan) => {
+                    self.python_output.push_str(">");
+                    self.move_token();
+                }
+                Some(Token::GreaterThanEqualsTo) => {
+                    self.python_output.push_str(">=");
+                    self.move_token();
+                }
+                Some(Token::LessThan) => {
+                    self.python_output.push_str("<");
+                    self.move_token();
+                }
+                Some(Token::LessThanEqualsTo) => {
+                    self.python_output.push_str("<=");
+                    self.move_token();
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![
+                            Token::GreaterThan,
+                            Token::GreaterThanEqualsTo,
+                            Token::LessThan,
+                            Token::LessThanEqualsTo,
+                        ],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                None => {
+                    return Err(ParseErr::NoTokenLeftError {
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
+            self.expression()?;
+            Ok(())
+        }
+
         fn expression(&mut self) -> Result<(), ParseErr> {
             todo!()
         }
-        fn column(&mut self) -> Result<(), ParseErr> {
 
+        fn column(&mut self) -> Result<(), ParseErr> {
             if let Ok(_) = self.match_token(&Token::OpenSquareBracket) {
                 self.str()?;
                 self.match_token(&Token::CloseSquareBracket)?;
                 return Ok(());
-            } 
+            }
 
             match self.current_token.take() {
                 Some(Token::Identity(identity)) => {
@@ -338,9 +349,20 @@ pub mod parser {
                         break;
                     }
                     Some(tok) => {
-                        todo!()
+                        return Err(ParseErr::WrongToken {
+                            expected: vec![
+                                Token::QuotationMark,
+                                Token::Identity("Identity".to_string()),
+                            ],
+                            actual: tok,
+                            source: Box::new(BaseErr {}),
+                        })
                     }
-                    None => todo!(),
+                    None => {
+                        return Err(ParseErr::NoTokenLeftError {
+                            source: Box::new(BaseErr {}),
+                        })
+                    }
                 }
             }
             Ok(())
