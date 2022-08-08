@@ -32,18 +32,20 @@ pub mod parser {
     impl<'a> RustyParser<'a> {
         /// Returns true if the current token matches the input token. Returns false otherwise.
         fn check_token(&self, kind: &Token) -> bool {
-            match &self.current_token {
-                Some(kind) => true,
-                _ => false,
+            if let Some(token) = self.current_token.as_ref() {
+                let result = token == kind;
+                return result
             }
+            return false
         }
 
         /// Returns true if the next token matches the input token. Returns false otherwise.
         fn check_next_token(&self, kind: &Token) -> bool {
-            match &self.next_token {
-                Some(kind) => true,
-                _ => false,
+            if let Some(token) = self.next_token.as_ref() {
+                let result = token == kind;
+                return result
             }
+            return false
         }
 
         /// If the current token matches the input token, will advance the current token to the next token.
@@ -130,12 +132,12 @@ pub mod parser {
                 Some(tok) => match tok {
                     Token::READ => {
                         self.move_token();
-                        self.read_statement();
+                        self.read_statement()?;
                         Ok(())
                     }
                     Token::WHERE => {
                         self.move_token();
-                        self.where_statement();
+                        self.where_statement()?;
                         Ok(())
                     }
                     Token::EXTEND => todo!(),
@@ -350,7 +352,19 @@ pub mod parser {
         }
 
         fn primary(&mut self) -> Result<(), ParseErr> {
-            todo!()
+            if let Ok(_) = self.column() {
+                return Ok(());
+            }
+            if let Ok(_) = self.number() {
+                return Ok(());
+            }
+            if let Ok(_) = self.float() {
+                return Ok(());
+            }
+            return Err(ParseErr::CustomParseError {
+                error_msg: "Expected a column, number or float.".to_string(),
+                source: Box::new(BaseErr {}),
+            });
         }
 
         fn column(&mut self) -> Result<(), ParseErr> {
@@ -384,6 +398,14 @@ pub mod parser {
                     })
                 }
             }
+        }
+
+        fn number(&mut self) -> Result<(), ParseErr> {
+            todo!()
+        }
+
+        fn float(&mut self) -> Result<(), ParseErr> {
+            todo!()
         }
 
         fn str(&mut self) -> Result<(), ParseErr> {
@@ -442,7 +464,7 @@ mod tests {
         let input = r#"
         sourceTable
         | READ csv
-        | WHERE isnotnull(["foo bar"])
+        | WHERE ["foo bar"] > 5
         "#;
 
         let expected_output =
