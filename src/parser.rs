@@ -424,7 +424,26 @@ pub mod parser {
         }
 
         fn float(&mut self) -> Result<(), ParseErr> {
-            todo!()
+            match self.current_token.take() {
+                Some(Token::Float(float)) => {
+                    self.move_token();
+                    let code_gen = format!(" {} ", float);
+                    self.python_output.push_str(&code_gen);
+                    Ok(())
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::Float(0.0)],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                None => {
+                    return Err(ParseErr::NoTokenLeftError {
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
         }
 
         fn str(&mut self) -> Result<(), ParseErr> {
