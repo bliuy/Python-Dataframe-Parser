@@ -34,18 +34,18 @@ pub mod parser {
         fn check_token(&self, kind: &Token) -> bool {
             if let Some(token) = self.current_token.as_ref() {
                 let result = token == kind;
-                return result
+                return result;
             }
-            return false
+            return false;
         }
 
         /// Returns true if the next token matches the input token. Returns false otherwise.
         fn check_next_token(&self, kind: &Token) -> bool {
             if let Some(token) = self.next_token.as_ref() {
                 let result = token == kind;
-                return result
+                return result;
             }
-            return false
+            return false;
         }
 
         /// If the current token matches the input token, will advance the current token to the next token.
@@ -401,7 +401,26 @@ pub mod parser {
         }
 
         fn number(&mut self) -> Result<(), ParseErr> {
-            todo!()
+            match self.current_token.take() {
+                Some(Token::Integer(int)) => {
+                    self.move_token();
+                    let code_gen = format!(" {} ", int);
+                    self.python_output.push_str(&code_gen);
+                    Ok(())
+                }
+                Some(tok) => {
+                    return Err(ParseErr::WrongToken {
+                        expected: vec![Token::Integer(0)],
+                        actual: tok,
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+                None => {
+                    return Err(ParseErr::NoTokenLeftError {
+                        source: Box::new(BaseErr {}),
+                    })
+                }
+            }
         }
 
         fn float(&mut self) -> Result<(), ParseErr> {
