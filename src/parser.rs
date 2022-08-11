@@ -193,27 +193,53 @@ pub mod parser {
         }
 
         fn where_statement(&mut self) -> Result<(), ParseErr> {
-            if let Ok(_) = self.isnotnull() {
+
+            match self.next_token {
+                Some(Token::ISNOTNULL) => {
+                    self.isnotnull()?;
                 let code_gen = format!(
                     "{} = {}[cond]\n",
                     self.main_table_name, self.main_table_name
                 );
                 self.python_output.push_str(&code_gen);
-                return Ok(());
+                Ok(())
+                },
+                _ => {
+                    self.expression()?;
+                    let code_gen = format!(
+                        "{} = {}[cond]\n",
+                        self.main_table_name, self.main_table_name
+                    );
+                    self.python_output.push_str(&code_gen);
+                    Ok(())
+                },
             }
+            // if let Ok(_) = self.isnotnull() {
+            //     let code_gen = format!(
+            //         "{} = {}[cond]\n",
+            //         self.main_table_name, self.main_table_name
+            //     );
+            //     self.python_output.push_str(&code_gen);
+            //     return Ok(());
+            // }
 
-            if let Ok(_) = self.isnull() {
-                todo!()
-            }
+            // if let Ok(_) = self.comparison() {
+            //     let code_gen = format!(
+            //         "{} = {}[cond]\n",
+            //         self.main_table_name, self.main_table_name
+            //     );
+            //     self.python_output.push_str(&code_gen);
+            //     return Ok(());
+            // }
 
-            if let Ok(_) = self.comparison() {
-                todo!()
-            }
+            // if let Ok(_) = self.isnull() {
+            //     todo!()
+            // }
 
-            Err(ParseErr::CustomParseError {
-                error_msg: "Unable to parse the where statement".to_string(),
-                source: Box::new(BaseErr {}),
-            })
+            // Err(ParseErr::CustomParseError {
+            //     error_msg: "Unable to parse the where statement".to_string(),
+            //     source: Box::new(BaseErr {}),
+            // })
         }
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
@@ -253,6 +279,7 @@ pub mod parser {
         }
 
         fn comparison(&mut self) -> Result<(), ParseErr> {
+            self.python_output.push_str("cond = (");
             self.expression()?;
             match self.current_token.take() {
                 Some(Token::GreaterThan) => {
@@ -290,6 +317,7 @@ pub mod parser {
                 }
             }
             self.expression()?;
+            self.python_output.push_str(")");
             Ok(())
         }
 
@@ -352,19 +380,34 @@ pub mod parser {
         }
 
         fn primary(&mut self) -> Result<(), ParseErr> {
-            if let Ok(_) = self.column() {
-                return Ok(());
+
+            match &self.next_token {
+                Some(Token::OpenSquareBracket) => {
+                    self.column()?;
+                    Ok(())
+                },
+                Some(Token::Integer(_)) => {
+                    self.number()?;
+                    Ok(())
+                },
+                Some(Token::Float(_)) => {
+                    self.float()?;
+                    Ok(())
+                },
+                Some(tok) => {
+                    Err(
+                        ParseErr::WrongToken { expected: vec![Token::OpenSquareBracket], actual: tok.clone(), source: Box::new(BaseErr {}) }
+                    )
+                }
+                _ => {
+                    Err(
+                        ParseErr::CustomParseError{
+                            error_msg: "Expected a column, number or float.".to_string(),
+                            source: Box::new(BaseErr {}),
+                        }
+                    )
+                },
             }
-            if let Ok(_) = self.number() {
-                return Ok(());
-            }
-            if let Ok(_) = self.float() {
-                return Ok(());
-            }
-            return Err(ParseErr::CustomParseError {
-                error_msg: "Expected a column, number or float.".to_string(),
-                source: Box::new(BaseErr {}),
-            });
         }
 
         fn column(&mut self) -> Result<(), ParseErr> {
