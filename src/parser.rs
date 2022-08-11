@@ -56,10 +56,10 @@ pub mod parser {
                     self.move_token();
                     Ok(())
                 }
-                false => match self.current_token.take() {
+                false => match self.current_token.as_ref() {
                     Some(i) => Err(ParseErr::WrongToken {
                         expected: vec![kind.clone()],
-                        actual: i,
+                        actual: i.clone(),
                         source: Box::new(BaseErr {}),
                     }),
                     None => Err(ParseErr::CustomParseError {
@@ -94,12 +94,12 @@ pub mod parser {
 
         pub fn program(&mut self) -> Result<(), ParseErr> {
             // Initial token - Should be an identity that represents a token name
-            let token = self.current_token.take();
+            let token = self.current_token.as_ref();
             match token {
                 Some(tok) => match tok {
                     Token::Identity(identity) => {
                         self.entities.insert(EntityType::Table(identity.clone())); // Adding into the HashSet of tables
-                        self.main_table_name.push_str(&identity); // Indicating that this will be the main table.
+                        self.main_table_name.push_str(identity); // Indicating that this will be the main table.
                         let gen_code = format!("{} = df \n", identity);
                         self.python_output.push_str(&gen_code);
                         self.move_token();
@@ -107,7 +107,7 @@ pub mod parser {
                     other => {
                         return Err(ParseErr::WrongToken {
                             expected: vec![Token::Identity("<variable name>".to_string())],
-                            actual: other,
+                            actual: other.clone(),
                             source: Box::new(BaseErr {}),
                         })
                     }
@@ -128,32 +128,32 @@ pub mod parser {
         }
 
         fn statement(&mut self) -> Result<(), ParseErr> {
-            match self.current_token.take() {
-                Some(tok) => match tok {
-                    Token::READ => {
-                        self.move_token();
-                        self.read_statement()?;
-                        Ok(())
-                    }
-                    Token::WHERE => {
-                        self.move_token();
-                        self.where_statement()?;
-                        Ok(())
-                    }
-                    Token::EXTEND => todo!(),
-                    other => {
-                        return Err(ParseErr::CustomParseError {
-                            error_msg: "Expected a statement!".to_string(),
-                            source: Box::new(BaseErr {}),
-                        })
-                    }
+            match self.current_token.as_ref() {
+                Some(Token::READ) => {
+                    self.move_token();
+                    self.read_statement()?;
+                    Ok(())
                 },
-                None => todo!(),
+                Some(Token::WHERE) => {
+                    self.move_token();
+                    self.where_statement()?;
+                    Ok(())
+                },
+                Some(tok) => {
+                    Err(
+                        ParseErr::WrongToken { expected: vec![Token::READ,Token::WHERE], actual: tok.clone(), source: Box::new(BaseErr {}) }
+                    )
+                }
+                None => {
+                    Err(
+                        ParseErr::CustomParseError { error_msg: "Expected a statement!".to_string(), source: Box::new(BaseErr {}) }
+                    )
+                },
             }
         }
 
         fn read_statement(&mut self) -> Result<(), ParseErr> {
-            match self.current_token.take() {
+            match self.current_token.as_ref() {
                 Some(tok) => match tok {
                     Token::Identity(identity) => match identity.to_lowercase().as_str() {
                         "csv" => {
@@ -194,7 +194,7 @@ pub mod parser {
 
         fn where_statement(&mut self) -> Result<(), ParseErr> {
 
-            match self.next_token {
+            match self.next_token.as_ref() {
                 Some(Token::ISNOTNULL) => {
                     self.isnotnull()?;
                 let code_gen = format!(
@@ -214,32 +214,6 @@ pub mod parser {
                     Ok(())
                 },
             }
-            // if let Ok(_) = self.isnotnull() {
-            //     let code_gen = format!(
-            //         "{} = {}[cond]\n",
-            //         self.main_table_name, self.main_table_name
-            //     );
-            //     self.python_output.push_str(&code_gen);
-            //     return Ok(());
-            // }
-
-            // if let Ok(_) = self.comparison() {
-            //     let code_gen = format!(
-            //         "{} = {}[cond]\n",
-            //         self.main_table_name, self.main_table_name
-            //     );
-            //     self.python_output.push_str(&code_gen);
-            //     return Ok(());
-            // }
-
-            // if let Ok(_) = self.isnull() {
-            //     todo!()
-            // }
-
-            // Err(ParseErr::CustomParseError {
-            //     error_msg: "Unable to parse the where statement".to_string(),
-            //     source: Box::new(BaseErr {}),
-            // })
         }
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
@@ -253,35 +227,35 @@ pub mod parser {
             Ok(())
         }
 
-        fn isnull(&mut self) -> Result<(), ParseErr> {
-            match self.current_token.take() {
-                Some(Token::ISNULL) => {
-                    self.move_token();
-                    match self.current_token.take() {
-                        Some(Token::OpenSquareBracket) => {
-                            self.move_token();
-                            self.column()?
-                        }
-                        _ => {
-                            return Err(ParseErr::CustomParseError {
-                                error_msg: "Expected '(' after the 'isnull' function.".to_string(),
-                                source: Box::new(BaseErr {}),
-                            })
-                        }
-                    }
-                    Ok(())
-                }
-                _ => Err(ParseErr::CustomParseError {
-                    error_msg: "Expected isnull function.".to_string(),
-                    source: Box::new(BaseErr {}),
-                }),
-            }
-        }
+        // fn isnull(&mut self) -> Result<(), ParseErr> {
+        //     match self.current_token.take() {
+        //         Some(Token::ISNULL) => {
+        //             self.move_token();
+        //             match self.current_token.take() {
+        //                 Some(Token::OpenSquareBracket) => {
+        //                     self.move_token();
+        //                     self.column()?
+        //                 }
+        //                 _ => {
+        //                     return Err(ParseErr::CustomParseError {
+        //                         error_msg: "Expected '(' after the 'isnull' function.".to_string(),
+        //                         source: Box::new(BaseErr {}),
+        //                     })
+        //                 }
+        //             }
+        //             Ok(())
+        //         }
+        //         _ => Err(ParseErr::CustomParseError {
+        //             error_msg: "Expected isnull function.".to_string(),
+        //             source: Box::new(BaseErr {}),
+        //         }),
+        //     }
+        // }
 
         fn comparison(&mut self) -> Result<(), ParseErr> {
             self.python_output.push_str("cond = (");
             self.expression()?;
-            match self.current_token.take() {
+            match self.current_token.as_ref() {
                 Some(Token::GreaterThan) => {
                     self.python_output.push_str(">");
                     self.move_token();
@@ -306,7 +280,7 @@ pub mod parser {
                             Token::LessThan,
                             Token::LessThanEqualsTo,
                         ],
-                        actual: tok,
+                        actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -325,7 +299,7 @@ pub mod parser {
             self.python_output.push_str("(");
             self.term()?;
             loop {
-                match self.current_token.take() {
+                match self.current_token.as_ref() {
                     Some(Token::PlusOperator) => {
                         self.python_output.push_str("+");
                         self.move_token();
@@ -347,7 +321,7 @@ pub mod parser {
             self.python_output.push_str("(");
             self.unary()?;
             loop {
-                match self.current_token.take() {
+                match self.current_token.as_ref() {
                     Some(Token::MulOperator) => {
                         self.python_output.push_str("*");
                         self.move_token();
@@ -419,7 +393,7 @@ pub mod parser {
                 return Ok(());
             }
 
-            match self.current_token.take() {
+            match self.current_token.as_ref() {
                 Some(Token::Identity(identity)) => {
                     self.move_token();
                     todo!();
@@ -431,7 +405,7 @@ pub mod parser {
                             Token::OpenSquareBracket,
                             Token::Identity("Identity".to_string()),
                         ],
-                        actual: tok,
+                        actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -444,17 +418,17 @@ pub mod parser {
         }
 
         fn number(&mut self) -> Result<(), ParseErr> {
-            match self.current_token.take() {
+            match self.current_token.as_ref() {
                 Some(Token::Integer(int)) => {
-                    self.move_token();
                     let code_gen = format!(" {} ", int);
                     self.python_output.push_str(&code_gen);
+                    self.move_token();
                     Ok(())
                 }
                 Some(tok) => {
                     return Err(ParseErr::WrongToken {
                         expected: vec![Token::Integer(0)],
-                        actual: tok,
+                        actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -467,17 +441,17 @@ pub mod parser {
         }
 
         fn float(&mut self) -> Result<(), ParseErr> {
-            match self.current_token.take() {
+            match self.current_token.as_ref() {
                 Some(Token::Float(float)) => {
-                    self.move_token();
                     let code_gen = format!(" {} ", float);
                     self.python_output.push_str(&code_gen);
+                    self.move_token();
                     Ok(())
                 }
                 Some(tok) => {
                     return Err(ParseErr::WrongToken {
                         expected: vec![Token::Float(0.0)],
-                        actual: tok,
+                        actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -496,7 +470,7 @@ pub mod parser {
             let mut current_str = String::from("");
 
             loop {
-                match self.current_token.take() {
+                match self.current_token.as_ref() {
                     Some(Token::Identity(identity)) => {
                         current_str.push_str(&identity); // Appending the token string
                         current_str.push_str(" "); // Appending a whitespace character
@@ -517,7 +491,7 @@ pub mod parser {
                                 Token::QuotationMark,
                                 Token::Identity("Identity".to_string()),
                             ],
-                            actual: tok,
+                            actual: tok.clone(),
                             source: Box::new(BaseErr {}),
                         })
                     }
