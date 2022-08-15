@@ -80,11 +80,11 @@ mod tests {
 
     #[test]
     fn lexer_test() {
-        let input = "
+        let input = r#"
         sourceTable
         | READ csv
-        | EXTEND foo = bar * 2
-        ";
+        | WHERE ["foo bar"] > 5
+        "#;
         let lex = <lexer::Token as logos::Logos>::lexer(input);
 
         for token in lex {
