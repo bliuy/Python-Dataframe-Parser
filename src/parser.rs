@@ -133,22 +133,21 @@ pub mod parser {
                     self.move_token();
                     self.read_statement()?;
                     Ok(())
-                },
+                }
                 Some(Token::WHERE) => {
                     self.move_token();
                     self.where_statement()?;
                     Ok(())
-                },
-                Some(tok) => {
-                    Err(
-                        ParseErr::WrongToken { expected: vec![Token::READ,Token::WHERE], actual: tok.clone(), source: Box::new(BaseErr {}) }
-                    )
                 }
-                None => {
-                    Err(
-                        ParseErr::CustomParseError { error_msg: "Expected a statement!".to_string(), source: Box::new(BaseErr {}) }
-                    )
-                },
+                Some(tok) => Err(ParseErr::WrongToken {
+                    expected: vec![Token::READ, Token::WHERE],
+                    actual: tok.clone(),
+                    source: Box::new(BaseErr {}),
+                }),
+                None => Err(ParseErr::CustomParseError {
+                    error_msg: "Expected a statement!".to_string(),
+                    source: Box::new(BaseErr {}),
+                }),
             }
         }
 
@@ -193,32 +192,36 @@ pub mod parser {
         }
 
         fn where_statement(&mut self) -> Result<(), ParseErr> {
-
-            match self.next_token.as_ref() {
+            self.python_output.push_str("cond = (");
+            match self.current_token.as_ref() {
+                // NOTE: Error here due to the inconsistent matching syntax. This should be inspecting the self.current_token instead of the next token.
                 Some(Token::ISNOTNULL) => {
                     self.isnotnull()?;
-                let code_gen = format!(
-                    "{} = {}[cond]\n",
-                    self.main_table_name, self.main_table_name
-                );
-                self.python_output.push_str(&code_gen);
-                Ok(())
-                },
-                _ => {
-                    self.expression()?;
+                    self.python_output.push_str(")\n");
                     let code_gen = format!(
                         "{} = {}[cond]\n",
                         self.main_table_name, self.main_table_name
                     );
                     self.python_output.push_str(&code_gen);
                     Ok(())
-                },
+                }
+                _ => {
+                    
+                    self.comparison()?;
+                    self.python_output.push_str(")\n");
+                    let code_gen = format!(
+                        "{} = {}[cond]\n",
+                        self.main_table_name, self.main_table_name
+                    );
+                    self.python_output.push_str(&code_gen);
+                    Ok(())
+                }
             }
         }
 
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
             self.match_token(&Token::ISNOTNULL)?;
-            self.python_output.push_str("cond = ");
+            // self.python_output.push_str("cond = ");
             self.match_token(&Token::OpenBracket)?;
             self.column()?;
             self.match_token(&Token::CloseBracket)?;
@@ -253,7 +256,7 @@ pub mod parser {
         // }
 
         fn comparison(&mut self) -> Result<(), ParseErr> {
-            self.python_output.push_str("cond = (");
+            // self.python_output.push_str("cond = (");
             self.expression()?;
             match self.current_token.as_ref() {
                 Some(Token::GreaterThan) => {
@@ -291,12 +294,12 @@ pub mod parser {
                 }
             }
             self.expression()?;
-            self.python_output.push_str(")");
+            // self.python_output.push_str(")");
             Ok(())
         }
 
         fn expression(&mut self) -> Result<(), ParseErr> {
-            self.python_output.push_str("(");
+            // self.python_output.push_str("(");
             self.term()?;
             loop {
                 match self.current_token.as_ref() {
@@ -313,12 +316,12 @@ pub mod parser {
                     _ => break,
                 }
             }
-            self.python_output.push_str(")");
+            // self.python_output.push_str(")");
             Ok(())
         }
 
         fn term(&mut self) -> Result<(), ParseErr> {
-            self.python_output.push_str("(");
+            // self.python_output.push_str("(");
             self.unary()?;
             loop {
                 match self.current_token.as_ref() {
@@ -336,7 +339,7 @@ pub mod parser {
                 }
             }
 
-            self.python_output.push_str(")");
+            // self.python_output.push_str(")");
             Ok(())
         }
 
@@ -354,33 +357,28 @@ pub mod parser {
         }
 
         fn primary(&mut self) -> Result<(), ParseErr> {
-
-            match &self.next_token {
+            match &self.current_token {
                 Some(Token::OpenSquareBracket) => {
                     self.column()?;
                     Ok(())
-                },
+                }
                 Some(Token::Integer(_)) => {
                     self.number()?;
                     Ok(())
-                },
+                }
                 Some(Token::Float(_)) => {
                     self.float()?;
                     Ok(())
-                },
-                Some(tok) => {
-                    Err(
-                        ParseErr::WrongToken { expected: vec![Token::OpenSquareBracket], actual: tok.clone(), source: Box::new(BaseErr {}) }
-                    )
                 }
-                _ => {
-                    Err(
-                        ParseErr::CustomParseError{
-                            error_msg: "Expected a column, number or float.".to_string(),
-                            source: Box::new(BaseErr {}),
-                        }
-                    )
-                },
+                Some(tok) => Err(ParseErr::WrongToken {
+                    expected: vec![Token::OpenSquareBracket],
+                    actual: tok.clone(),
+                    source: Box::new(BaseErr {}),
+                }),
+                _ => Err(ParseErr::CustomParseError {
+                    error_msg: "Expected a column, number or float.".to_string(),
+                    source: Box::new(BaseErr {}),
+                }),
             }
         }
 
@@ -531,4 +529,24 @@ mod tests {
         // assert_eq!(expected_output, &pars.python_output);
         println!("{}", &pars.python_output);
     }
+
+    #[test]
+    fn isnotnull_test() {
+        let input = r#"
+        sourceTable
+        | READ csv
+        | WHERE isnotnull(["foo bar baz"])
+        "#;
+
+        let expected_output =
+            "sourceTable = df \nsourceTable = pd.DataFrame.read_csv(sourceTable) \n";
+
+        let lex = <crate::lexer::lexer::Token as logos::Logos>::lexer(input);
+        let mut pars = RustyParser::new(lex);
+        pars.program().unwrap();
+        // assert_eq!(expected_output, &pars.python_output);
+        println!("{}", &pars.python_output);
+    }
+
+
 }
