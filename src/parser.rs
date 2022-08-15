@@ -206,7 +206,6 @@ pub mod parser {
                     Ok(())
                 }
                 _ => {
-                    
                     self.comparison()?;
                     self.python_output.push_str(")\n");
                     let code_gen = format!(
@@ -547,6 +546,4 @@ mod tests {
         // assert_eq!(expected_output, &pars.python_output);
         println!("{}", &pars.python_output);
     }
-
-
 }
