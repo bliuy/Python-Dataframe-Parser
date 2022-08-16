@@ -100,7 +100,7 @@ pub mod parser {
                     Token::Identity(identity) => {
                         self.entities.insert(EntityType::Table(identity.clone())); // Adding into the HashSet of tables
                         self.main_table_name.push_str(identity); // Indicating that this will be the main table.
-                        let gen_code = format!("{} = df \n", identity);
+                        let gen_code = format!("{} = <filepath> \n", identity);
                         self.python_output.push_str(&gen_code);
                         self.move_token();
                     }
@@ -139,8 +139,13 @@ pub mod parser {
                     self.where_statement()?;
                     Ok(())
                 }
+                Some(Token::EXTEND) => {
+                    self.move_token();
+                    self.extend_statement()?;
+                    Ok(())
+                }
                 Some(tok) => Err(ParseErr::WrongToken {
-                    expected: vec![Token::READ, Token::WHERE],
+                    expected: vec![Token::READ, Token::WHERE, Token::WHERE],
                     actual: tok.clone(),
                     source: Box::new(BaseErr {}),
                 }),
@@ -218,13 +223,21 @@ pub mod parser {
             }
         }
 
+        fn extend_statement(&mut self) -> Result<(), ParseErr> {
+            self.column()?;
+            self.match_token(&Token::EqualsOperator)?;
+            self.python_output.push_str(" = ");
+            self.expression()?;
+            self.python_output.push_str("\n");
+            Ok(())
+        }
+
         fn isnotnull(&mut self) -> Result<(), ParseErr> {
             self.match_token(&Token::ISNOTNULL)?;
-            // self.python_output.push_str("cond = ");
             self.match_token(&Token::OpenBracket)?;
             self.column()?;
             self.match_token(&Token::CloseBracket)?;
-            self.python_output.push_str(".notna()\n");
+            self.python_output.push_str(".notna()");
 
             Ok(())
         }
@@ -417,7 +430,7 @@ pub mod parser {
         fn number(&mut self) -> Result<(), ParseErr> {
             match self.current_token.as_ref() {
                 Some(Token::Integer(int)) => {
-                    let code_gen = format!(" {} ", int);
+                    let code_gen = format!("{}", int);
                     self.python_output.push_str(&code_gen);
                     self.move_token();
                     Ok(())
@@ -440,7 +453,7 @@ pub mod parser {
         fn float(&mut self) -> Result<(), ParseErr> {
             match self.current_token.as_ref() {
                 Some(Token::Float(float)) => {
-                    let code_gen = format!(" {} ", float);
+                    let code_gen = format!("{}", float);
                     self.python_output.push_str(&code_gen);
                     self.move_token();
                     Ok(())
@@ -520,12 +533,12 @@ mod tests {
         "#;
 
         let expected_output =
-            "sourceTable = df \nsourceTable = pd.DataFrame.read_csv(sourceTable) \n";
+            "sourceTable = <filepath> \nsourceTable = pd.DataFrame.read_csv(sourceTable) \ncond = (df.loc[:,\"foo bar\"]>5)\nsourceTable = sourceTable[cond]\n";
 
         let lex = <crate::lexer::lexer::Token as logos::Logos>::lexer(input);
         let mut pars = RustyParser::new(lex);
         pars.program().unwrap();
-        // assert_eq!(expected_output, &pars.python_output);
+        assert_eq!(expected_output, &pars.python_output);
         println!("{}", &pars.python_output);
     }
 
@@ -538,12 +551,31 @@ mod tests {
         "#;
 
         let expected_output =
-            "sourceTable = df \nsourceTable = pd.DataFrame.read_csv(sourceTable) \n";
+            "sourceTable = <filepath> \nsourceTable = pd.DataFrame.read_csv(sourceTable) \ncond = (df.loc[:,\"foo bar baz\"].notna())\nsourceTable = sourceTable[cond]\n";
 
         let lex = <crate::lexer::lexer::Token as logos::Logos>::lexer(input);
         let mut pars = RustyParser::new(lex);
         pars.program().unwrap();
-        // assert_eq!(expected_output, &pars.python_output);
+        assert_eq!(expected_output, &pars.python_output);
+        println!("{}", &pars.python_output);
+    }
+
+    #[test]
+    fn extend_test() {
+        let input = r#"
+        sourceTable
+        | READ csv
+        | EXTEND ["foo"] = ["bar"] * 2
+        | EXTEND ["baz"] = ["qux"] * 5.1
+        "#;
+
+        let expected_output =
+            "sourceTable = <filepath> \nsourceTable = pd.DataFrame.read_csv(sourceTable) \ndf.loc[:,\"foo\"] = df.loc[:,\"bar\"]*2\ndf.loc[:,\"baz\"] = df.loc[:,\"qux\"]*5.1\n";
+
+        let lex = <crate::lexer::lexer::Token as logos::Logos>::lexer(input);
+        let mut pars = RustyParser::new(lex);
+        pars.program().unwrap();
+        assert_eq!(expected_output, &pars.python_output);
         println!("{}", &pars.python_output);
     }
 }
