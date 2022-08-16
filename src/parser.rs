@@ -1,8 +1,8 @@
 //! Contains the parser module used for parsing the tokens into Python dataframe code.
 pub mod parser {
     use std::collections::HashSet;
-    use std::error::Error;
-    use std::fmt::format;
+    
+    
 
     use logos::Lexer;
 
@@ -36,7 +36,7 @@ pub mod parser {
                 let result = token == kind;
                 return result;
             }
-            return false;
+            false
         }
 
         /// Returns true if the next token matches the input token. Returns false otherwise.
@@ -45,7 +45,7 @@ pub mod parser {
                 let result = token == kind;
                 return result;
             }
-            return false;
+            false
         }
 
         /// If the current token matches the input token, will advance the current token to the next token.
@@ -120,7 +120,7 @@ pub mod parser {
                 }
             }
 
-            while let Some(_) = &self.current_token {
+            while self.current_token.is_some() {
                 self.statement()?;
             }
 
@@ -167,7 +167,7 @@ pub mod parser {
                             );
                             self.python_output.push_str(&code_gen);
                             self.move_token();
-                            return Ok(());
+                            Ok(())
                         }
                         "excel" => {
                             let code_gen = format!(
@@ -176,19 +176,19 @@ pub mod parser {
                             );
                             self.python_output.push_str(&code_gen);
                             self.move_token();
-                            return Ok(());
+                            Ok(())
                         }
                         _ => {
-                            return Err(ParseErr::CustomParseError {
+                            Err(ParseErr::CustomParseError {
                                 error_msg: "Expected either 'csv' or 'excel'.".to_string(),
                                 source: Box::new(BaseErr {}),
                             })
                         }
                     },
-                    other => todo!(),
+                    _other => todo!(),
                 },
                 None => {
-                    return Err(ParseErr::CustomParseError {
+                    Err(ParseErr::CustomParseError {
                         error_msg: "Expected either 'csv' or 'excel'.".to_string(),
                         source: Box::new(BaseErr {}),
                     })
@@ -228,7 +228,7 @@ pub mod parser {
             self.match_token(&Token::EqualsOperator)?;
             self.python_output.push_str(" = ");
             self.expression()?;
-            self.python_output.push_str("\n");
+            self.python_output.push('\n');
             Ok(())
         }
 
@@ -272,7 +272,7 @@ pub mod parser {
             self.expression()?;
             match self.current_token.as_ref() {
                 Some(Token::GreaterThan) => {
-                    self.python_output.push_str(">");
+                    self.python_output.push('>');
                     self.move_token();
                 }
                 Some(Token::GreaterThanEqualsTo) => {
@@ -280,7 +280,7 @@ pub mod parser {
                     self.move_token();
                 }
                 Some(Token::LessThan) => {
-                    self.python_output.push_str("<");
+                    self.python_output.push('<');
                     self.move_token();
                 }
                 Some(Token::LessThanEqualsTo) => {
@@ -316,12 +316,12 @@ pub mod parser {
             loop {
                 match self.current_token.as_ref() {
                     Some(Token::PlusOperator) => {
-                        self.python_output.push_str("+");
+                        self.python_output.push('+');
                         self.move_token();
                         self.term()?;
                     }
                     Some(Token::MinusOperator) => {
-                        self.python_output.push_str("-");
+                        self.python_output.push('-');
                         self.move_token();
                         self.term()?;
                     }
@@ -338,12 +338,12 @@ pub mod parser {
             loop {
                 match self.current_token.as_ref() {
                     Some(Token::MulOperator) => {
-                        self.python_output.push_str("*");
+                        self.python_output.push('*');
                         self.move_token();
                         self.unary()?;
                     }
                     Some(Token::DivOperator) => {
-                        self.python_output.push_str("/");
+                        self.python_output.push('/');
                         self.move_token();
                         self.unary()?;
                     }
@@ -356,11 +356,11 @@ pub mod parser {
         }
 
         fn unary(&mut self) -> Result<(), ParseErr> {
-            if let Ok(_) = self.match_token(&Token::PlusOperator) {
+            if self.match_token(&Token::PlusOperator).is_ok() {
                 self.primary()?;
             }
 
-            if let Ok(_) = self.match_token(&Token::MinusOperator) {
+            if self.match_token(&Token::MinusOperator).is_ok() {
                 self.python_output.push_str("-1 * ");
                 self.primary()?;
             }
@@ -395,22 +395,22 @@ pub mod parser {
         }
 
         fn column(&mut self) -> Result<(), ParseErr> {
-            if let Ok(_) = self.match_token(&Token::OpenSquareBracket) {
+            if self.match_token(&Token::OpenSquareBracket).is_ok() {
                 self.python_output.push_str("df.loc[:,");
                 self.str()?;
                 self.match_token(&Token::CloseSquareBracket)?;
-                self.python_output.push_str("]");
+                self.python_output.push(']');
                 return Ok(());
             }
 
             match self.current_token.as_ref() {
-                Some(Token::Identity(identity)) => {
+                Some(Token::Identity(_identity)) => {
                     self.move_token();
                     todo!();
-                    return Ok(());
+                    Ok(())
                 }
                 Some(tok) => {
-                    return Err(ParseErr::WrongToken {
+                    Err(ParseErr::WrongToken {
                         expected: vec![
                             Token::OpenSquareBracket,
                             Token::Identity("Identity".to_string()),
@@ -420,7 +420,7 @@ pub mod parser {
                     })
                 }
                 None => {
-                    return Err(ParseErr::NoTokenLeftError {
+                    Err(ParseErr::NoTokenLeftError {
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -436,14 +436,14 @@ pub mod parser {
                     Ok(())
                 }
                 Some(tok) => {
-                    return Err(ParseErr::WrongToken {
+                    Err(ParseErr::WrongToken {
                         expected: vec![Token::Integer(0)],
                         actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
                 None => {
-                    return Err(ParseErr::NoTokenLeftError {
+                    Err(ParseErr::NoTokenLeftError {
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -459,14 +459,14 @@ pub mod parser {
                     Ok(())
                 }
                 Some(tok) => {
-                    return Err(ParseErr::WrongToken {
+                    Err(ParseErr::WrongToken {
                         expected: vec![Token::Float(0.0)],
                         actual: tok.clone(),
                         source: Box::new(BaseErr {}),
                     })
                 }
                 None => {
-                    return Err(ParseErr::NoTokenLeftError {
+                    Err(ParseErr::NoTokenLeftError {
                         source: Box::new(BaseErr {}),
                     })
                 }
@@ -475,23 +475,23 @@ pub mod parser {
 
         fn str(&mut self) -> Result<(), ParseErr> {
             self.match_token(&Token::QuotationMark)?;
-            self.python_output.push_str(r#"""#);
+            self.python_output.push('"');
 
             let mut current_str = String::from("");
 
             loop {
                 match self.current_token.as_ref() {
                     Some(Token::Identity(identity)) => {
-                        current_str.push_str(&identity); // Appending the token string
-                        current_str.push_str(" "); // Appending a whitespace character
+                        current_str.push_str(identity); // Appending the token string
+                        current_str.push(' '); // Appending a whitespace character
                         self.move_token();
                     }
                     Some(Token::QuotationMark) => {
-                        if current_str.len() > 0 {
+                        if !current_str.is_empty() {
                             current_str.pop(); // Removing the trailing whitespace added during the while-let loop above.
                         }
                         self.python_output.push_str(&current_str);
-                        self.python_output.push_str(r#"""#);
+                        self.python_output.push('"');
                         self.move_token();
                         break;
                     }
@@ -520,7 +520,7 @@ pub mod parser {
 #[cfg(test)]
 mod tests {
 
-    use super::{parser::RustyParser, *};
+    use super::{parser::RustyParser};
 
     /// Extremely basic test to see if the parsing even works.
     /// If this fails, this means that there are serious underlying problems that needs to be fixed even before addressing any other failed tests.
